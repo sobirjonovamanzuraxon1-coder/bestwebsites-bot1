@@ -1,4 +1,4 @@
-// src/bot.js - COMPLETE UPDATED VERSION WITH EXAM PREP
+// src/bot.js - COMPLETE VERSION WITH 24/7 KEEP-ALIVE
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const { categories } = require('./categories.js');
@@ -11,7 +11,7 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // ===== MAIN COMMANDS =====
 
-// Start command - Main menu
+// Start command
 bot.start(async (ctx) => {
     console.log(`👤 ${ctx.from.username} started the bot`);
     
@@ -27,7 +27,6 @@ bot.start(async (ctx) => {
         `3. Get honest reviews`
     );
     
-    // Show category buttons
     await ctx.reply(
         '👇 *Choose a category:*',
         {
@@ -52,17 +51,14 @@ bot.command('categories', async (ctx) => {
 
 // ===== CATEGORY HANDLERS =====
 
-// Football category
 bot.hears('⚽ Football', async (ctx) => {
     await showWebsites(ctx, 'football');
 });
 
-// Programming category
 bot.hears('💻 Programming', async (ctx) => {
     await showWebsites(ctx, 'programming');
 });
 
-// Design category
 bot.hears('🎨 Design', async (ctx) => {
     await showWebsites(ctx, 'design');
 });
@@ -111,8 +107,11 @@ bot.hears('🏠 Main Menu', async (ctx) => {
 
 // ===== HELPER FUNCTIONS =====
 
-// Show websites for a category
+// Show websites - ALL IN ONE MESSAGE
 async function showWebsites(ctx, mainCategory, subCategory = null) {
+    let websites = [];
+    let categoryTitle = '';
+    
     // Handle exam prep (nested categories)
     if (mainCategory === 'exam_prep' && subCategory) {
         const examData = categories[mainCategory];
@@ -123,35 +122,11 @@ async function showWebsites(ctx, mainCategory, subCategory = null) {
             return;
         }
         
-        await ctx.replyWithMarkdown(
-            `${subCatData.title} *Preparation Websites*\n` +
-            `Showing ${subCatData.websites.length} curated resources:\n`
-        );
-        
-        // Display websites
-        for (let i = 0; i < subCatData.websites.length; i++) {
-            const site = subCatData.websites[i];
-            const message = 
-                `*${i + 1}. ${site.name}*\n` +
-                `${site.description}\n` +
-                `🔗 ${site.url}\n` +
-                `✅ ${site.pros}\n` +
-                `❌ ${site.cons}`;
-                
-                
-            
-            await ctx.replyWithMarkdown(message);
-            
-            if (i < subCatData.websites.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 300));
-            }
-        }
-        
-        // Show exam menu again
-        await showExamSubcategories(ctx);
+        websites = subCatData.websites;
+        categoryTitle = subCatData.title;
         
     } 
-    // Handle regular categories (football, programming, design)
+    // Handle regular categories
     else {
         const categoryData = categories[mainCategory];
         
@@ -160,35 +135,41 @@ async function showWebsites(ctx, mainCategory, subCategory = null) {
             return;
         }
         
-        const categoryEmoji = {
-            'football': '⚽',
-            'programming': '💻',
-            'design': '🎨'
-        }[mainCategory] || '📋';
+        websites = categoryData;
+        categoryTitle = {
+            'football': '⚽ Football',
+            'programming': '💻 Programming',
+            'design': '🎨 Design'
+        }[mainCategory] || mainCategory.charAt(0).toUpperCase() + mainCategory.slice(1);
+    }
+    
+    // Build ONE SINGLE message with ALL websites
+    let message = `*${categoryTitle} Websites*\n\n`;
+    
+    // Add each website in compact format
+    for (let i = 0; i < websites.length; i++) {
+        const site = websites[i];
         
-        await ctx.replyWithMarkdown(
-            `${categoryEmoji} *${mainCategory.charAt(0).toUpperCase() + mainCategory.slice(1)} Websites*\n` +
-            `Showing ${categoryData.length} curated websites:\n`
-        );
+        message += 
+            `*${i + 1}. ${site.name}*\n` +
+            `🔗 ${site.url}\n` +
+            `📝 ${site.description}\n` +
+            `✅ ${site.pros}\n` +
+            `❌ ${site.cons}\n`;
         
-        for (let i = 0; i < categoryData.length; i++) {
-            const site = categoryData[i];
-            const message = 
-                `*${i + 1}. ${site.name}*\n` +
-                `🔗 ${site.url}\n` +
-                `📝 ${site.description}\n` +
-                `✅ *Pros:* ${site.pros}\n` +
-                `❌ *Cons:* ${site.cons}\n` +
-                `━━━━━━━━━━━━━━━━━━━━`;
-            
-            await ctx.replyWithMarkdown(message);
-            
-            if (i < categoryData.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 300));
-            }
+        // Add separator unless it's the last website
+        if (i < websites.length - 1) {
+            message += `────────────────────\n`;
         }
-        
-        // Show category buttons
+    }
+    
+    // Send the SINGLE message
+    await ctx.replyWithMarkdown(message);
+    
+    // Show navigation
+    if (mainCategory === 'exam_prep') {
+        await showExamSubcategories(ctx);
+    } else {
         await showCategories(ctx);
     }
 }
@@ -258,53 +239,86 @@ async function showCategories(ctx) {
     );
 }
 
-// ===== ERROR HANDLING =====
-bot.catch((err, ctx) => {
-    console.error('❌ Bot error:', err);
-    ctx?.reply?.('Oops! Something went wrong. Try /start again.');
-});
-
-// ===== LAUNCH BOT =====
-bot.launch()
-    .then(() => {
-        console.log('✅ BOT IS RUNNING!');
-        console.log(`🤖 Username: @${bot.botInfo.username}`);
-        console.log('👉 Send /start on Telegram');
-        console.log('='.repeat(50));
-        console.log('💡 TIP: Open a new terminal for other commands');
-        console.log('      while bot runs in this terminal.');
-        console.log('='.repeat(50));
-    })
-    .catch(err => {
-        console.error('❌ Failed to start:', err.message);
-    });
-
-
-
-// ===== ADD DUMMY SERVER HERE (before shutdown) =====
+// ===== 24/7 KEEP-ALIVE SYSTEM =====
 const http = require('http');
 
-// Create simple HTTP server to satisfy Render's port check
-const server = http.createServer((req, res) => {
+const keepAliveServer = http.createServer((req, res) => {
+    // Health check endpoint for Render
+    if (req.url === '/health' || req.url === '/') {
+        res.writeHead(200, { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+        });
+        res.end(JSON.stringify({
+            status: 'online',
+            service: 'BestWebsites Bot',
+            uptime: process.uptime(),
+            timestamp: new Date().toISOString(),
+            telegram: '@BestWebSites_bot'
+        }));
+        console.log(`✅ Health check at ${new Date().toLocaleTimeString()}`);
+        return;
+    }
+    
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('🤖 BestWebsites Bot is running!\nFind me on Telegram: @BestWebSites_bot');
+    res.end('🤖 BestWebsites Bot\nTelegram: @BestWebSites_bot\nHealth: /health');
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`✅ HTTP server listening on port ${PORT} (for Render compatibility)`);
-    console.log(`🌐 Bot should now deploy successfully!`);
+keepAliveServer.listen(PORT, () => {
+    console.log(`✅ 24/7 Keep-alive server on port ${PORT}`);
 });
-// ===== END DUMMY SERVER =====
 
-// Graceful shutdown (EXISTING CODE - KEEP THIS!)
+// Self-ping every 14 minutes (under Render's 15min timeout)
+setInterval(() => {
+    const req = http.get(`http://localhost:${PORT}/health`, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+            console.log(`🏓 Self-ping: ${JSON.parse(data).timestamp.split('T')[1].slice(0,8)}`);
+        });
+    });
+    req.on('error', () => {});
+    req.setTimeout(5000, () => req.destroy());
+}, 14 * 60 * 1000); // Every 14 minutes
+
+// Initial ping after 30 seconds
+setTimeout(() => {
+    http.get(`http://localhost:${PORT}/health`);
+}, 30000);
+
+// ===== ERROR HANDLING =====
+bot.catch((err, ctx) => {
+    console.error('❌ Bot error:', err.message);
+    ctx?.reply?.('Oops! Something went wrong. Try /start again.');
+});
+
+// ===== BOT LAUNCH =====
+bot.launch()
+    .then(() => {
+        console.log('✅ Bot connected to Telegram!');
+        console.log(`🤖 Username: @${bot.botInfo.username}`);
+        console.log('👉 Send /start on Telegram');
+        console.log('='.repeat(50));
+        console.log('💡 Bot will stay 24/7 with keep-alive system!');
+        console.log('='.repeat(50));
+    })
+    .catch(err => {
+        console.error('❌ Bot failed to connect:', err.message);
+        // Don't crash on conflict errors
+        if (err.response?.description?.includes('terminated by other getUpdates')) {
+            console.log('⚠️  Ignoring conflict error - bot might already be running');
+        }
+    });
+
+// ===== GRACEFUL SHUTDOWN =====
 process.once('SIGINT', () => {
-    server.close();  // ADD THIS LINE
+    console.log('🛑 SIGINT received - shutting down');
+    keepAliveServer.close();
     bot.stop('SIGINT');
 });
 process.once('SIGTERM', () => {
-    server.close();  // ADD THIS LINE
+    console.log('🛑 SIGTERM received - shutting down');
+    keepAliveServer.close();
     bot.stop('SIGTERM');
 });
-
-// ? Git workflow test successful
