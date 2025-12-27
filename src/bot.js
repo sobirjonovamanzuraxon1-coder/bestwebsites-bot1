@@ -1,4 +1,4 @@
-// src/bot.js - COMPLETE VERSION WITH 24/7 KEEP-ALIVE
+// src/bot.js - WITH CORRECT 14-MINUTE INTERVALS
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const { categories } = require('./categories.js');
@@ -11,7 +11,6 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // ===== MAIN COMMANDS =====
 
-// Start command
 bot.start(async (ctx) => {
     console.log(`👤 ${ctx.from.username} started the bot`);
     
@@ -44,7 +43,6 @@ bot.start(async (ctx) => {
     );
 });
 
-// Categories command
 bot.command('categories', async (ctx) => {
     await showCategories(ctx);
 });
@@ -63,12 +61,10 @@ bot.hears('🎨 Design', async (ctx) => {
     await showWebsites(ctx, 'design');
 });
 
-// Exam Prep category (NESTED)
 bot.hears('📚 Exam Prep', async (ctx) => {
     await showExamSubcategories(ctx);
 });
 
-// Exam subcategories
 bot.hears('📝 IELTS', async (ctx) => {
     await showWebsites(ctx, 'exam_prep', 'ielts');
 });
@@ -81,12 +77,10 @@ bot.hears('🎯 TOEFL', async (ctx) => {
     await showWebsites(ctx, 'exam_prep', 'toefl');
 });
 
-// All Categories
 bot.hears('📚 All Categories', async (ctx) => {
     await showAllCategories(ctx);
 });
 
-// Main menu handler
 bot.hears('🏠 Main Menu', async (ctx) => {
     await ctx.reply('Returning to main menu...');
     await ctx.reply(
@@ -107,12 +101,10 @@ bot.hears('🏠 Main Menu', async (ctx) => {
 
 // ===== HELPER FUNCTIONS =====
 
-// Show websites - ALL IN ONE MESSAGE
 async function showWebsites(ctx, mainCategory, subCategory = null) {
     let websites = [];
     let categoryTitle = '';
     
-    // Handle exam prep (nested categories)
     if (mainCategory === 'exam_prep' && subCategory) {
         const examData = categories[mainCategory];
         const subCatData = examData.subcategories[subCategory];
@@ -125,9 +117,7 @@ async function showWebsites(ctx, mainCategory, subCategory = null) {
         websites = subCatData.websites;
         categoryTitle = subCatData.title;
         
-    } 
-    // Handle regular categories
-    else {
+    } else {
         const categoryData = categories[mainCategory];
         
         if (!categoryData || categoryData.length === 0) {
@@ -143,10 +133,8 @@ async function showWebsites(ctx, mainCategory, subCategory = null) {
         }[mainCategory] || mainCategory.charAt(0).toUpperCase() + mainCategory.slice(1);
     }
     
-    // Build ONE SINGLE message with ALL websites
     let message = `*${categoryTitle} Websites*\n\n`;
     
-    // Add each website in compact format
     for (let i = 0; i < websites.length; i++) {
         const site = websites[i];
         
@@ -157,16 +145,13 @@ async function showWebsites(ctx, mainCategory, subCategory = null) {
             `✅ ${site.pros}\n` +
             `❌ ${site.cons}\n`;
         
-        // Add separator unless it's the last website
         if (i < websites.length - 1) {
             message += `────────────────────\n`;
         }
     }
     
-    // Send the SINGLE message
     await ctx.replyWithMarkdown(message);
     
-    // Show navigation
     if (mainCategory === 'exam_prep') {
         await showExamSubcategories(ctx);
     } else {
@@ -174,7 +159,6 @@ async function showWebsites(ctx, mainCategory, subCategory = null) {
     }
 }
 
-// Show exam subcategories
 async function showExamSubcategories(ctx) {
     const examData = categories['exam_prep'];
     
@@ -199,7 +183,6 @@ async function showExamSubcategories(ctx) {
     );
 }
 
-// Show all categories
 async function showAllCategories(ctx) {
     const regularCats = ['football', 'programming', 'design'];
     const categoryList = regularCats
@@ -220,7 +203,6 @@ async function showAllCategories(ctx) {
     );
 }
 
-// Show categories menu
 async function showCategories(ctx) {
     await ctx.reply(
         '👇 *Browse Categories:*',
@@ -243,7 +225,6 @@ async function showCategories(ctx) {
 const http = require('http');
 
 const keepAliveServer = http.createServer((req, res) => {
-    // Health check endpoint for Render
     if (req.url === '/health' || req.url === '/') {
         res.writeHead(200, { 
             'Content-Type': 'application/json',
@@ -269,7 +250,7 @@ keepAliveServer.listen(PORT, () => {
     console.log(`✅ 24/7 Keep-alive server on port ${PORT}`);
 });
 
-// Self-ping every 14 minutes (under Render's 15min timeout)
+// CORRECT: Self-ping every 14 minutes (840,000 ms)
 setInterval(() => {
     const req = http.get(`http://localhost:${PORT}/health`, (res) => {
         let data = '';
@@ -280,7 +261,7 @@ setInterval(() => {
     });
     req.on('error', () => {});
     req.setTimeout(5000, () => req.destroy());
-}, 14 * 60 * 1000); // Every 14 minutes
+}, 14 * 60 * 1000); // 14 MINUTES = 840,000 milliseconds
 
 // Initial ping after 30 seconds
 setTimeout(() => {
@@ -300,12 +281,11 @@ bot.launch()
         console.log(`🤖 Username: @${bot.botInfo.username}`);
         console.log('👉 Send /start on Telegram');
         console.log('='.repeat(50));
-        console.log('💡 Bot will stay 24/7 with keep-alive system!');
+        console.log('💡 Bot will stay 24/7 (pings every 14 minutes)');
         console.log('='.repeat(50));
     })
     .catch(err => {
         console.error('❌ Bot failed to connect:', err.message);
-        // Don't crash on conflict errors
         if (err.response?.description?.includes('terminated by other getUpdates')) {
             console.log('⚠️  Ignoring conflict error - bot might already be running');
         }
